@@ -78,40 +78,13 @@ class AstFieldDeclaration:
 # klasa za definiciju klasa
 class AstClass:
     def __init__(self):
+        self.kod = ""               # konacan kod koji ce biti izgenerisan
         self.name = ""
         self.parent_classes = []        # za svaku klasu generisemo objekat, metode i na kraju implicit operator
         self.allDeclarations = []       # u ovu listu cemo staviti i polja i metode, redom kojim se pojavljuju
         return
 
-    def generate_code(self):
-        kod = "class " + self.name
-
-        if len(self.parent_classes) > 0:
-            # klasa direktno nasledjuje jednu klasu, ostale ugnjezdujemo
-            kod += " : " + self.parent_classes[0].name + "\n"
-        else:
-            # ako nema nasledjivanja, samo prelazimo u novi red
-            kod += "\n"
-
-        kod += "{\n"        # otvaramo zagradu za definiciju klase
-
-        specifier = "private"       # dok ne naidjemo na izricitu deklaraciju access specifiera, onda je ta prom. priv.
-        if self.name == "Program":
-            specifier = None
-        for decl in self.allDeclarations:
-            if isinstance(decl, AstFieldDeclaration):
-                kod += "    " + specifier + " " + decl.generate_code() + ";\n"
-            elif isinstance(decl, AstMethodDeclaration):
-                kod += "    "  # tabovanje
-                if specifier is not None:
-                    kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
-                kod += decl.generate_code() + "\n"
-                kod += "    {\n"
-                kod += "\n"
-                kod += "    }\n"
-            else:
-                # ako nije ni AstFieldDeclaration ni AstMethodDeclaration, onda je u pitanju promena access specifiera
-                specifier = str(decl)
+    def generate_inheritance(self):
 
         # posle deklaracija, treba da ugnjezdimo klase tako sto cemo za svaku klasu od koje trenutna klasa nasledjuje
         # (osim one koja se direktno nasledjuje) generisemo jedan objekat klase koja se nasledjuje, onda treba proci
@@ -124,21 +97,55 @@ class AstClass:
             if isinstance(klasa, AstClass):
                 object_name = klasa.name + "Part"       # generisemo objekat
                 object_decl = "public " + klasa.name + " " + object_name + " = new " + klasa.name + "();"
-                kod += "    " + object_decl + "\n"
+                self.kod += "    " + object_decl + "\n"
 
                 for method in klasa.allDeclarations:    # za svaku metodu, treba generisati kod koji ce pozvati tu metodu
                                                         # iz potrebne klase
                     if isinstance(method, AstMethodDeclaration):
-                        kod += "    " + "void " + method.name + "\n"
-                        kod += "    {\n"
-                        kod += "    " + "    " + object_name + "." + method.name + ";\n"
-                        kod += "    }\n"
+                        self.kod += "    " + "void " + method.name + "\n"
+                        self.kod += "    {\n"
+                        self.kod += "    " + "    " + object_name + "." + method.name + ";\n"
+                        self.kod += "    }\n"
 
                 # na kraju, generisemo implicit operator
-                kod += "    " + "static implicit operator " + klasa.name + "(" + self.name + " obj)\n"
-                kod += "    {\n"
-                kod += "    " + "    " + "return obj." + object_name + ";\n"
-                kod += "    }\n"
+                self.kod += "    " + "static implicit operator " + klasa.name + "(" + self.name + " obj)\n"
+                self.kod += "    {\n"
+                self.kod += "    " + "    " + "return obj." + object_name + ";\n"
+                self.kod += "    }\n"
 
-        kod += "}\n"        # zatvaramo zagradu za definiciju klase
-        return kod
+
+    def generate_code(self):
+        self.kod = "class " + self.name
+
+        if len(self.parent_classes) > 0:
+            # klasa direktno nasledjuje jednu klasu, ostale ugnjezdujemo
+            self.kod += " : " + self.parent_classes[0].name + "\n"
+        else:
+            # ako nema nasledjivanja, samo prelazimo u novi red
+            self.kod += "\n"
+
+        self.kod += "{\n"        # otvaramo zagradu za definiciju klase
+
+        specifier = "private"       # dok ne naidjemo na izricitu deklaraciju access specifiera, onda je ta prom. priv.
+        if self.name == "Program":
+            specifier = None
+        for decl in self.allDeclarations:
+            if isinstance(decl, AstFieldDeclaration):
+                self.kod += "    " + specifier + " " + decl.generate_code() + ";\n"
+            elif isinstance(decl, AstMethodDeclaration):
+                self.kod += "    "  # tabovanje
+                if specifier is not None:
+                    self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
+                self.kod += decl.generate_code() + "\n"
+                self.kod += "    {\n"
+                self.kod += "\n"
+                self.kod += "    }\n"
+            else:
+                # ako nije ni AstFieldDeclaration ni AstMethodDeclaration, onda je u pitanju promena access specifiera
+                specifier = str(decl)
+
+        if len(self.parent_classes) > 0:
+            self.generate_inheritance()
+
+        self.kod += "}\n"        # zatvaramo zagradu za definiciju klase
+        return self.kod
