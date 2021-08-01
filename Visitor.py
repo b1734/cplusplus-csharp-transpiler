@@ -75,7 +75,7 @@ class Visitor(CPP14Visitor):
     #        self.declaration.type = self.typesDictionary[ctx.getText()]
         var_type = ctx.getText()
         if self.current_field is not None:
-            self.current_field.type = var_type if self.current_field.type == "" else self.current_field.type
+            self.current_field.type = var_type if self.current_field.type is None else self.current_field.type
         elif self.current_method is not None:
             self.current_method.type = var_type if self.current_method.type is None else self.current_method.type
         elif self.current_function is not None:
@@ -133,7 +133,6 @@ class Visitor(CPP14Visitor):
             # ako ne obradjujemo metodu neke klase, onda se radi o definiciji obicne funkcije
             # ta funkcija je u C# metoda klase Program, tako da ovde koristimo objekat klase AstMethodDeclaration
             # samo sto je necemo dodavati u self.current_class.allDeclarations (jer current class ne postoji)
-            print("definisemo obicnu funkciju")
             self.current_function = AstMethodDeclaration()
 
         self.visitChildren(ctx)

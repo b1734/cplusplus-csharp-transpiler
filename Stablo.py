@@ -104,7 +104,7 @@ class AstClass:
             elif isinstance(decl, AstMethodDeclaration):
                 kod += "    "  # tabovanje
                 if specifier is not None:
-                    kod += specifier + " " # ako nije u pitanju klasa Program, imamo neki access specifier
+                    kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
                 kod += decl.generate_code() + "\n"
                 kod += "    {\n"
                 kod += "\n"
