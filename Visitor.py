@@ -124,6 +124,16 @@ class Visitor(CPP14Visitor):
             self.current_class.name = ctx.getText()       # dete ovog cvora je ime klase
         return self.visitChildren(ctx)
 
+    def visitBaseTypeSpecifier(self, ctx:CPP14Parser.BaseTypeSpecifierContext):
+        if self.current_class is not None:
+            self.current_class.parent_class = ctx.getText()
+
+    def visitBaseSpecifier(self, ctx: CPP14Parser.BaseClauseContext):
+        # posto u C# ne mozemo reci da li je nasledjivanje public, protected ili private - access specifier nas ne
+        # zanima, zanima nas samo ime klase od koje nasledjujemo]
+        self.visitChildren(ctx)
+        return
+
     def visitFunctionDefinition(self, ctx: CPP14Parser.FunctionBodyContext):
         if self.current_method is None:
             # ako ne obradjujemo metodu neke klase, onda se radi o definiciji obicne funkcije
@@ -141,6 +151,7 @@ class Visitor(CPP14Visitor):
 
     def visitMemberdeclaration(self, ctx: CPP14Parser.MemberdeclarationContext):
         # oke, ovo ce biti nesto kao simpleDeclaration
+        # TODO: podesiti da prevede i nizove (ako je polje definisano kao niz)
 
         if ctx.functionDefinition() is None:
             # u pitanju je deklaracija polja

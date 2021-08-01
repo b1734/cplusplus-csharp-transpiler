@@ -76,12 +76,20 @@ class AstFieldDeclaration:
 class AstClass:
     def __init__(self):
         self.name = ""
-        self.inheritance = None
+        self.parent_class = None
         self.allDeclarations = []       # u ovu listu cemo staviti i polja i metode, redom kojim se pojavljuju
         return
 
     def generate_code(self):
-        kod = "class " + self.name + "\n"
+        kod = "class " + self.name
+
+        if self.parent_class is not None:
+            # postoji neki parent class od kog nasledjujemo
+            kod += " : " + self.parent_class + "\n"
+        else:
+            # ako ne nasledjujemo, samo prelazimo u novi red
+            kod += "\n"
+
         kod += "{\n"        # otvaramo zagradu za definiciju klase
 
         specifier = "private"       # dok ne naidjemo na izricitu deklaraciju access specifiera, onda je ta prom. priv.
