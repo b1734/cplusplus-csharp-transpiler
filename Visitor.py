@@ -49,6 +49,7 @@ class Visitor(CPP14Visitor):
             "double": "double",
             "float": "float"
         }
+        self.classes_dictionary = {}    # ime klase je povezano sa AstClass objektom za tu klasu
         # NOTE: u ovaj recnik dodajem takodje svaku klasu kao poseban 'tip'
 
     def visitConstantExpression(self, ctx: CPP14Parser.ConstantExpressionContext):
@@ -116,11 +117,12 @@ class Visitor(CPP14Visitor):
     def visitClassName(self, ctx: CPP14Parser.ClassNameContext):
         if self.current_class is not None:
             self.current_class.name = ctx.getText()       # dete ovog cvora je ime klase
+            self.classes_dictionary[ctx.getText()] = self.current_class
         return self.visitChildren(ctx)
 
     def visitBaseTypeSpecifier(self, ctx:CPP14Parser.BaseTypeSpecifierContext):
         if self.current_class is not None:
-            self.current_class.parent_class = ctx.getText()
+            self.current_class.parent_classes.append(self.classes_dictionary[ctx.getText()])
 
     def visitBaseSpecifier(self, ctx: CPP14Parser.BaseClauseContext):
         # posto u C# ne mozemo reci da li je nasledjivanje public, protected ili private - access specifier nas ne
