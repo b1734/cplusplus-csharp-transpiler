@@ -60,13 +60,16 @@ class AstMethodDeclaration:
 
 class AstFieldDeclaration:
     def __init__(self):
-        self.type = ""
+        self.type = None
         self.name = ""
         self.value = None
 
     def generate_code(self):
         kod = ""
-        kod += self.type + " " + self.name
+        if self.type is not None:
+            kod += self.type + " "
+        kod += self.name
+
         if self.value is not None:
             kod += " = " + self.value
         return kod
@@ -93,11 +96,16 @@ class AstClass:
         kod += "{\n"        # otvaramo zagradu za definiciju klase
 
         specifier = "private"       # dok ne naidjemo na izricitu deklaraciju access specifiera, onda je ta prom. priv.
+        if self.name == "Program":
+            specifier = None
         for decl in self.allDeclarations:
             if isinstance(decl, AstFieldDeclaration):
                 kod += "    " + specifier + " " + decl.generate_code() + ";\n"
             elif isinstance(decl, AstMethodDeclaration):
-                kod += "    " + specifier + " " + decl.generate_code() + "\n"
+                kod += "    "  # tabovanje
+                if specifier is not None:
+                    kod += specifier + " " # ako nije u pitanju klasa Program, imamo neki access specifier
+                kod += decl.generate_code() + "\n"
                 kod += "    {\n"
                 kod += "\n"
                 kod += "    }\n"

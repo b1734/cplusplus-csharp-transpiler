@@ -73,38 +73,32 @@ class Visitor(CPP14Visitor):
             #    print("Getting type of a declaration...")
             #    print(ctx.getText())
     #        self.declaration.type = self.typesDictionary[ctx.getText()]
+        var_type = ctx.getText()
         if self.current_field is not None:
-            #    print("Getting type of a field...")
-            self.current_field.type = ctx.getText()
-        #    print(self.current_field.type)
+            self.current_field.type = var_type if self.current_field.type == "" else self.current_field.type
         elif self.current_method is not None:
-            #    print("Getting type of a method...")
-            self.current_method.type = ctx.getText()
-        #    print(self.current_method.type)
+            self.current_method.type = var_type if self.current_method.type is None else self.current_method.type
         elif self.current_function is not None:
-            #    print("Getting type of a function...")
-            self.current_function.type = ctx.getText()
-        #    print(self.current_function.type)
+            self.current_function.type = var_type if self.current_function.type is None else self.current_function.type
 
         return self.visitChildren(ctx)
 
     def visitInitializerClause(self, ctx: CPP14Parser.InitializerContext):
         value = ctx.getText()
-        #    print("VALUE: " + value)
         if value != "None":
             if self.declaration is not None:
                 self.declaration.value = value
 
     def visitDeclarator(self, ctx: CPP14Parser.DeclaratorContext):
         variable = ctx.getText()
-    #    print(variable)
         if variable != "None":
             if self.current_field is not None:
-                self.current_field.name = variable
+                self.current_field.name = variable if self.current_field.name == "" else self.current_field.name
             elif self.current_method is not None:
-                self.current_method.name = variable
+                self.current_method.name = variable if self.current_method.name == "" else self.current_method.name
             elif self.current_function is not None:
-                self.current_function.name = variable
+                self.current_function.name = variable if self.current_function.name == "" else self.current_function.name
+            #    print("ime funkcije: " + self.current_function.name)
         return self.visitChildren(ctx)
 
     def visitInitDeclarator(self, ctx: CPP14Parser.InitDeclaratorContext):
@@ -137,10 +131,15 @@ class Visitor(CPP14Visitor):
     def visitFunctionDefinition(self, ctx: CPP14Parser.FunctionBodyContext):
         if self.current_method is None:
             # ako ne obradjujemo metodu neke klase, onda se radi o definiciji obicne funkcije
-            # zato kreiramo novi objekat klase AstFunction
-            self.current_function = AstFunction()
+            # ta funkcija je u C# metoda klase Program, tako da ovde koristimo objekat klase AstMethodDeclaration
+            # samo sto je necemo dodavati u self.current_class.allDeclarations (jer current class ne postoji)
+            print("definisemo obicnu funkciju")
+            self.current_function = AstMethodDeclaration()
 
         self.visitChildren(ctx)
+
+        if self.current_function is not None:
+            self.allFunctions.append(self.current_function)
 
         self.current_function = None
         return
@@ -151,7 +150,7 @@ class Visitor(CPP14Visitor):
 
     def visitMemberdeclaration(self, ctx: CPP14Parser.MemberdeclarationContext):
         # oke, ovo ce biti nesto kao simpleDeclaration
-        # TODO: podesiti da prevede i nizove (ako je polje definisano kao niz)
+        # TODO: podesiti da prevede i nizove (odnosno, ako je polje neke klase zapravo niz)
 
         if ctx.functionDefinition() is None:
             # u pitanju je deklaracija polja
@@ -190,6 +189,15 @@ main_func.name = "Main(string[] args)"
 
 program_class = AstClass()
 program_class.name = "Program"
+# u klasu program je potrebno dodati ze sve funkcije iz liste visitor.allFunctions[]
+
+for func in visitor.allFunctions:
+    if isinstance(func, AstMethodDeclaration):
+        if func.name == "main()":
+            continue
+            # main funkciju handlujem posebno
+    program_class.allDeclarations.append(func)
+
 program_class.allDeclarations.append(main_func)
 
 visitor.allClasses.append(program_class)
