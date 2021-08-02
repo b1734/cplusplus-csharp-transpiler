@@ -122,7 +122,10 @@ class Visitor(CPP14Visitor):
 
     def visitBaseTypeSpecifier(self, ctx:CPP14Parser.BaseTypeSpecifierContext):
         if self.current_class is not None:
+            # oznaci koja klasa je bazna trenutnoj
             self.current_class.parent_classes.append(self.classes_dictionary[ctx.getText()])
+            # oznaci baznoj klasi da trenutna klasa nasledjuje od nje
+            self.classes_dictionary[ctx.getText()].child_classes.append(self.current_class)
 
     def visitBaseSpecifier(self, ctx: CPP14Parser.BaseClauseContext):
         # posto u C# ne mozemo reci da li je nasledjivanje public, protected ili private - access specifier nas ne
@@ -177,6 +180,10 @@ class Visitor(CPP14Visitor):
         self.visitChildren(ctx)
 
         self.allClasses.append(self.current_class)
+
+        if len(self.current_class.parent_classes) > 0:
+            self.current_class.parent_classes[0].directInheritance.append(self.current_class)
+
         self.current_class = None
         return
 
