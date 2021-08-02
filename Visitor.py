@@ -53,7 +53,7 @@ class Visitor(CPP14Visitor):
         # NOTE: u ovaj recnik dodajem takodje svaku klasu kao poseban 'tip'
 
     def visitConstantExpression(self, ctx: CPP14Parser.ConstantExpressionContext):
-        self.declaration.array_size = ctx.getText()
+        self.current_field.array_size = ctx.getText()
         return self.visitChildren(ctx)
 
     def visitNoPointerDeclarator(self, ctx: CPP14Parser.NoPointerDeclaratorContext):
@@ -87,10 +87,10 @@ class Visitor(CPP14Visitor):
     def visitInitializerClause(self, ctx: CPP14Parser.InitializerContext):
         value = ctx.getText()
         if value != "None":
-            if self.declaration is not None:
-                self.declaration.value = value
+            if self.current_field is not None:
+                self.current_field.value = value
 
-    def visitDeclarator(self, ctx: CPP14Parser.DeclaratorContext):
+    def visitDeclaratorid(self, ctx: CPP14Parser.DeclaratorContext):
         variable = ctx.getText()
         if variable != "None":
             if self.current_field is not None:

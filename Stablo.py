@@ -32,16 +32,6 @@ class AstDeclaration:
         return s
 
 
-# klasa za definiciju funkcija
-class AstFunction:
-    def __init__(self):
-        self.type = ""
-        self.name = ""
-
-    def generate_code(self):
-        return
-
-
 class AstMethodDeclaration:
     def __init__(self):
         self.virtual = None         # ovo je za kasnije
@@ -54,7 +44,7 @@ class AstMethodDeclaration:
             pass
         elif self.type is not None:
             kod += self.type + " "
-        kod += self.name        # zagrade su vec "uracunate" u self.name
+        kod += self.name + "()"
         return kod
 
 
@@ -63,9 +53,15 @@ class AstFieldDeclaration:
         self.type = None
         self.name = ""
         self.value = None
+        self.array_size = "-1"
+
 
     def generate_code(self):
         kod = ""
+        if self.array_size != "-1":
+            kod += self.type + "[] " + self.name + " = new " + self.type + "[" + self.array_size + "]"
+            return kod
+
         if self.type is not None:
             kod += self.type + " "
         kod += self.name
