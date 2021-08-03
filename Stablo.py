@@ -160,6 +160,8 @@ class AstClass:
                 self.kod += "    "  # tabovanje
                 if specifier is not None:
                     self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
+                    if len(self.child_classes) > 0:
+                        specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
                 self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
