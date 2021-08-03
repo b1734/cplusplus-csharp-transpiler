@@ -183,7 +183,7 @@ class AstClass:
                     self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
-                self.kod += "\n"
+                self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
                 self.kod += "    }\n"
             else:
                 # ako nije ni AstFieldDeclaration ni AstMethodDeclaration, onda je u pitanju promena access specifiera
