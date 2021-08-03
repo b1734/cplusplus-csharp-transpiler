@@ -66,7 +66,7 @@ class Visitor(CPP14Visitor):
         #    print("PROMENLJIVA: " + self.variable)
         return self.visitChildren(ctx)
 
-    def visitDeclSpecifierSeq(self, ctx: CPP14Parser.DeclSpecifierSeqContext):
+    def visitDeclSpecifier(self, ctx: CPP14Parser.DeclSpecifierSeqContext):
     #    if self.declaration is not None:
         #    if not(ctx.getText() in self.typesDictionary.values()):
              #   self.typesDictionary[ctx.getText()] = ctx.getText()
@@ -78,7 +78,11 @@ class Visitor(CPP14Visitor):
         if self.current_field is not None:
             self.current_field.type = var_type if self.current_field.type is None else self.current_field.type
         elif self.current_method is not None:
-            self.current_method.type = var_type if self.current_method.type is None else self.current_method.type
+            # posto je sintaksa virtual int a ne int virutal, prvo proveravamo za virutal a posle za int
+            if self.current_method.virtual is None and var_type == "virtual":
+                self.current_method.virtual = var_type
+            else:
+                self.current_method.type = var_type if self.current_method.type is None else self.current_method.type
         elif self.current_function is not None:
             self.current_function.type = var_type if self.current_function.type is None else self.current_function.type
 
@@ -201,7 +205,7 @@ program_class.name = "Program"
 
 for func in visitor.allFunctions:
     if isinstance(func, AstMethodDeclaration):
-        if func.name == "main()":
+        if func.name == "main":
             continue
             # main funkciju handlujem posebno
     program_class.allDeclarations.append(func)

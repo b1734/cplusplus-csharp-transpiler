@@ -34,15 +34,20 @@ class AstDeclaration:
 
 class AstMethodDeclaration:
     def __init__(self):
-        self.virtual = None         # ovo je za kasnije
+        self.virtual = None         # da li je virtuelna funkcija u pitanju
+        self.override = False        # da li je ova funkcija override neke virutelne
         self.type = None        # ako type ostane none, u pitanju je konstruktor
         self.name = ""
 
     def generate_code(self):
         kod = ""
         if self.virtual is not None:
-            pass
-        elif self.type is not None:
+            kod += self.virtual + " "
+
+        if self.override:
+            kod += "override "
+
+        if self.type is not None:
             kod += self.type + " "
         kod += self.name + "()"
         return kod
@@ -81,6 +86,16 @@ class AstClass:
         self.allDeclarations = []       # u ovu listu cemo staviti i polja i metode, redom kojim se pojavljuju
         self.directInheritance = []     # klase koje direktno nasledjuju trenutnu klasu
         return
+
+    def check_virutal(self, method):
+        if len(self.parent_classes) == 0:
+            return
+        # proveravamo sve metode klase koja je direktno nasledjena da proverimo da li je tr metoda deklarisana kao virtuelna
+        parent = self.parent_classes[0]
+        for parent_method in parent.allDeclarations:
+            if isinstance(parent_method, AstMethodDeclaration):
+                if parent_method.name == method.name and parent_method.virtual is not None:
+                    method.override = True
 
     def generate_children(self):
         # klasa sadrzi objekat deteta, kako bi mogli da izgenerisemo implicit operator i omogucimo eksplicitno type
@@ -166,7 +181,7 @@ class AstClass:
 
          # konstruktor generisemo posebno, jer ako imamo neki parent class moramo podesiti nejgove objekte
         generated_constructor = False
-        if len(self.parent_classes) > 0:
+        if len(self.parent_classes) > 1:    # ako imamo samo jedan parent class, ne moramo da podesavamo constructor
             self.generate_constructor()
             generated_constructor = True
 
@@ -183,6 +198,7 @@ class AstClass:
                     if len(self.child_classes) > 0:
                         specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
                     self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
+                self.check_virutal(decl)    # proveravamo, da li je trenutna metoda override
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
                 self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
