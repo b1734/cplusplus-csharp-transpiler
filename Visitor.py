@@ -124,8 +124,6 @@ class Visitor(CPP14Visitor):
         if self.current_class is not None:
             # oznaci koja klasa je bazna trenutnoj
             self.current_class.parent_classes.append(self.classes_dictionary[ctx.getText()])
-            # oznaci baznoj klasi da trenutna klasa nasledjuje od nje
-            self.classes_dictionary[ctx.getText()].child_classes.append(self.current_class)
 
     def visitBaseSpecifier(self, ctx: CPP14Parser.BaseClauseContext):
         # posto u C# ne mozemo reci da li je nasledjivanje public, protected ili private - access specifier nas ne
@@ -175,13 +173,13 @@ class Visitor(CPP14Visitor):
 
     def visitClassSpecifier(self, ctx: CPP14Parser.ClassSpecifierContext):
         self.current_class = AstClass()
-
         self.visitChildren(ctx)
 
         self.allClasses.append(self.current_class)
 
-        if len(self.current_class.parent_classes) > 0:
-            self.current_class.parent_classes[0].directInheritance.append(self.current_class)
+        for parent in self.current_class.parent_classes:
+            if isinstance(parent, AstClass):
+                parent.interface = True
 
         self.current_class = None
         return
@@ -200,7 +198,7 @@ program_class.name = "Program"
 
 for func in visitor.allFunctions:
     if isinstance(func, AstMethodDeclaration):
-        if func.name == "main()":
+        if func.name == "main":
             continue
             # main funkciju handlujem posebno
     program_class.allDeclarations.append(func)
@@ -213,6 +211,3 @@ for klasa in visitor.allClasses:
     if isinstance(klasa, AstClass):
         print(klasa.generate_code())
         pass
-
-print("jos jedna linija")
-print("dodao sam novu liniju za commit")
