@@ -154,7 +154,6 @@ class Visitor(CPP14Visitor):
 
     def visitMemberdeclaration(self, ctx: CPP14Parser.MemberdeclarationContext):
         # oke, ovo ce biti nesto kao simpleDeclaration
-        # TODO: podesiti da prevede i nizove (odnosno, ako je polje neke klase zapravo niz)
 
         if ctx.functionDefinition() is None:
             # u pitanju je deklaracija polja
@@ -210,11 +209,10 @@ program_class.allDeclarations.append(main_func)
 
 visitor.allClasses.append(program_class)
 
-
 for klasa in visitor.allClasses:
     if isinstance(klasa, AstClass):
         print(klasa.generate_code())
         pass
 
-
-# TODO: namestiti generisanje koda
+print("jos jedna linija")
+print("dodao sam novu liniju za commit")
