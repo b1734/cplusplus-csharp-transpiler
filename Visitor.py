@@ -8,28 +8,6 @@ if __name__ is not None and "." in __name__:
 else:
     from CPP14Parser import CPP14Parser
 
-
-# funkcija za citanje koda
-def GetCode(name):
-    file = open(name, 'r')
-    code = ""
-    for line in file:
-        code += line
-
-    return code
-
-
-# inicijalizacija potrebnih promenljivih
-file_name = "Test.txt"
-input_code = GetCode(file_name)
-code = antlr4.InputStream(input_code)
-
-lexer = CPP14Lexer(code)
-tokens = antlr4.CommonTokenStream(lexer)
-parser = CPP14Parser(tokens)
-tree = parser.translationUnit()
-
-
 # definicija klase, pomocu koje visitujemo stablo i pravimo ast
 class Visitor(CPP14Visitor):
     allClasses = []
@@ -177,7 +155,6 @@ class Visitor(CPP14Visitor):
             # u pitanju je deklaracija metode
             self.current_method = AstMethodDeclaration()
             self.visitChildren(ctx)
-            self.current_method.container = self.current_class
             self.current_class.allDeclarations.append(self.current_method)
             self.current_method = None
 
@@ -205,30 +182,54 @@ class Visitor(CPP14Visitor):
         self.current_class = None
         return
 
+# funkcija za citanje koda
+def GetCode(name):
+    file = open(name, 'r')
+    code = ""
+    for line in file:
+        code += line
+    file.close()
+    return code
+
 
 visitor = Visitor()
-visitor.visitTranslationUnit(tree)
+tests_cnt = 10
+# za svaki test generisemo poseban kod koji upisujemo u novi fajl
+for i in range(1):
+    #inicijalizacija potrebnih promenljivih
+    file_name = "Testiranje/Test" + str(i + 1) + ".txt"
+    input_code = GetCode(file_name)
+    code = antlr4.InputStream(input_code)
 
-main_func = AstMethodDeclaration()
-main_func.type = "static int"
-main_func.name = "Main"
+    lexer = CPP14Lexer(code)
+    tokens = antlr4.CommonTokenStream(lexer)
+    parser = CPP14Parser(tokens)
+    tree = parser.translationUnit()
 
-program_class = AstClass()
-program_class.name = "Program"
-# u klasu program je potrebno dodati ze sve funkcije iz liste visitor.allFunctions[]
+    visitor.visitTranslationUnit(tree)
 
-for func in visitor.allFunctions:
-    if isinstance(func, AstMethodDeclaration):
-        if func.name == "main":
-            continue
-            # main funkciju handlujem posebno
-    program_class.allDeclarations.append(func)
+    main_func = AstMethodDeclaration()
+    main_func.type = "static int"
+    main_func.name = "Main"
 
-program_class.allDeclarations.append(main_func)
+    program_class = AstClass()
+    program_class.name = "Program"
+    # u klasu program je potrebno dodati ze sve funkcije iz liste visitor.allFunctions[]
 
-visitor.allClasses.append(program_class)
+    for func in visitor.allFunctions:
+        if isinstance(func, AstMethodDeclaration):
+            if func.name == "main":
+                continue
+                # main funkciju handlujem posebno
+        program_class.allDeclarations.append(func)
 
-for klasa in visitor.allClasses:
-    if isinstance(klasa, AstClass):
-        print(klasa.generate_code())
-        pass
+    program_class.allDeclarations.append(main_func)
+    visitor.allClasses.append(program_class)
+
+    result_file_name = "Testiranje/ResultsInterfaces" + str(i + 1) + ".txt"
+    results = open(result_file_name, 'w')
+
+    for klasa in visitor.allClasses:
+        if isinstance(klasa, AstClass):
+            results.write(klasa.generate_code())
+    results.close()
