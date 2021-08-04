@@ -75,8 +75,12 @@ class Visitor(CPP14Visitor):
             #    print(ctx.getText())
     #        self.declaration.type = self.typesDictionary[ctx.getText()]
         var_type = ctx.getText()
+
         if self.current_field is not None:
-            self.current_field.type = var_type if self.current_field.type is None else self.current_field.type
+            if not self.current_field.abstract and var_type == "virtual":
+                self.current_field.abstract = True
+            else:
+                self.current_field.type = var_type if self.current_field.type is None else self.current_field.type
         elif self.current_method is not None:
             # posto je sintaksa virtual int a ne int virutal, prvo proveravamo za virutal a posle za int
             if self.current_method.virtual is None and var_type == "virtual":
@@ -158,12 +162,13 @@ class Visitor(CPP14Visitor):
 
     def visitMemberdeclaration(self, ctx: CPP14Parser.MemberdeclarationContext):
         # oke, ovo ce biti nesto kao simpleDeclaration
-        # TODO: podesiti da prevede i nizove (odnosno, ako je polje neke klase zapravo niz)
 
         if ctx.functionDefinition() is None:
             # u pitanju je deklaracija polja
             self.current_field = AstFieldDeclaration()
             self.visitChildren(ctx)
+            if self.current_field.abstract:
+                self.current_class.abstract = True
             self.current_class.allDeclarations.append(self.current_field)
             self.current_field = None
         else:
@@ -197,7 +202,7 @@ visitor.visitTranslationUnit(tree)
 
 main_func = AstMethodDeclaration()
 main_func.type = "static int"
-main_func.name = "Main(string[] args)"
+main_func.name = "Main"
 
 program_class = AstClass()
 program_class.name = "Program"

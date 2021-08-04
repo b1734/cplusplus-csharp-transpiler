@@ -55,6 +55,7 @@ class AstMethodDeclaration:
 
 class AstFieldDeclaration:
     def __init__(self):
+        self.abstract = False
         self.type = None
         self.name = ""
         self.value = None
@@ -65,6 +66,12 @@ class AstFieldDeclaration:
         kod = ""
         if self.array_size != "-1":
             kod += self.type + "[] " + self.name + " = new " + self.type + "[" + self.array_size + "]"
+            return kod
+
+        # ako je u pitanju definicija pure virtual metode, parser je zapravo vidi kao polje - zato imamo ovo self.abstract
+        # koje nam kaze da izgenerisemo apstraktnu metodu u c#
+        if self.abstract:
+            kod += "abstract " + self.type + " " + self.name + "()"
             return kod
 
         if self.type is not None:
@@ -81,11 +88,28 @@ class AstClass:
     def __init__(self):
         self.kod = ""               # konacan kod koji ce biti izgenerisan
         self.name = ""
+        self.abstract = False
         self.parent_classes = []        # za svaku baznu klasu generisemo objekat, metode i na kraju implicit operator
         self.child_classes = []      # ovde stavljamo sve klase koje nasledjuju ovu trenutnu klasu
         self.allDeclarations = []       # u ovu listu cemo staviti i polja i metode, redom kojim se pojavljuju
         self.directInheritance = []     # klase koje direktno nasledjuju trenutnu klasu
+        self.return_dictionary = {
+            "int": "0",
+            "char": "'a'",
+            "long": "0",
+            "string": "str",
+            "double": "3.14159",
+            "float": "3.14159",
+            "bool": "true"
+        }
         return
+
+    def check_if_overriden(self, method_name):     # helper funkcija za proveravanje da li je metoda overrajduvana
+        for method in self.allDeclarations:
+            if isinstance(method, AstMethodDeclaration):
+                if method.name == method_name:
+                    return True
+        return False
 
     def check_virutal(self, method):
         if len(self.parent_classes) == 0:
@@ -95,6 +119,10 @@ class AstClass:
         for parent_method in parent.allDeclarations:
             if isinstance(parent_method, AstMethodDeclaration):
                 if parent_method.name == method.name and parent_method.virtual is not None:
+                    method.override = True
+            elif isinstance(parent_method, AstFieldDeclaration):
+                # parser pure virtual metode vidi kao deklaraciju polja pa zato moramo proveriti i AstField objekte
+                if parent_method.name == method.name and parent_method.abstract:
                     method.override = True
 
     def generate_children(self):
@@ -121,24 +149,31 @@ class AstClass:
         # kroz sve metode te klase i generisati ih i na kraju treba generisati static implicit operator
 
         for parent in self.parent_classes:
-            if parent == self.parent_classes[0]:     # preskacemo prvu klasu u listi, jer smo nju vec direktno nalsedili
-                continue
 
             if isinstance(parent, AstClass):
-                object_name = parent.name + "Part"       # generisemo objekat
-                object_decl = "public " + parent.name + " " + object_name + " = new " + parent.name + "();"
-                self.kod += "    " + object_decl + "\n"
+                if parent == self.parent_classes[0]:     # preskacemo prvu klasu u listi, jer smo nju vec direktno nalsedili
+                    continue
+
+                necessary = False
+                add_code = ""
+                object_name = parent.name + "Part"       # generisemo objekat koji sigurno dodajemo
+                self.kod += "    public " + parent.name + " " + object_name + " = new " + parent.name + "();\n"
 
                 for method in parent.allDeclarations:    # za svaku metodu, treba generisati kod koji ce pozvati tu metodu
-                                                        # iz potrebne klase
+                    # iz potrebne klase
                     if isinstance(method, AstMethodDeclaration):
                         if method.type is None:
                             continue            # preskoci constructor
-
-                        self.kod += "    " + "public void " + method.name + "\n"
-                        self.kod += "    {\n"
-                        self.kod += "    " + "    " + object_name + "." + method.name + ";\n"
-                        self.kod += "    }\n"
+                        if self.check_if_overriden(method.name) and method.virtual:
+                            # ako je ova metoda vec overrajdovana, preskoci je
+                            continue
+                        necessary = True
+                        add_code += "    " + "public void " + method.name + "()\n"
+                        add_code += "    {\n"
+                        add_code += "    " + "    " + object_name + "." + method.name + "();\n"
+                        add_code += "    }\n"
+                if necessary:
+                    self.kod += add_code
 
                 # na kraju, generisemo implicit operator
                 self.kod += "    " + "static public implicit operator " + parent.name + "(" + self.name + " obj)\n"
@@ -147,7 +182,7 @@ class AstClass:
                 self.kod += "    }\n"
         return
 
-    def generate_constructor(self, specifier = "public"):
+    def generate_constructor(self, specifier="public"):
         # oke, koliko kapiram private constructor se koristi samo ako je cela klasa static, cime se ja sad ne bavim
         # a protected constructor sluzi za nesto drugo
         # uglavnom, mislim da je poprilicno sigurno da stavim svaki konstruktor kao public
@@ -164,7 +199,9 @@ class AstClass:
         self.kod += "    }\n"
 
     def generate_code(self):
-        self.kod = "class " + self.name
+        if self.abstract:
+            self.kod += "abstract "
+        self.kod += "class " + self.name
 
         if len(self.parent_classes) > 0:
             # klasa direktno nasledjuje jednu klasu, ostale ugnjezdujemo
@@ -189,7 +226,7 @@ class AstClass:
             if isinstance(decl, AstFieldDeclaration):
                 self.kod += "    " + specifier + " " + decl.generate_code() + ";\n"
             elif isinstance(decl, AstMethodDeclaration):
-                if decl.name == (self.name + "()") and generated_constructor:
+                if decl.name == self.name and generated_constructor:
                     # preskacemo konstruktor, jer smo ga vec hendlovali
                     continue
 
@@ -198,10 +235,14 @@ class AstClass:
                     if len(self.child_classes) > 0:
                         specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
                     self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
+
                 self.check_virutal(decl)    # proveravamo, da li je trenutna metoda override
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
+                self.kod += "       // method's body can be filled as you wish\n"
                 self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
+                if decl.name != "Main" and decl.type != "void":
+                    self.kod += "       return " + self.return_dictionary[decl.type] + ";\n"
                 self.kod += "    }\n"
             else:
                 # ako nije ni AstFieldDeclaration ni AstMethodDeclaration, onda je u pitanju promena access specifiera
