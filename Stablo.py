@@ -185,7 +185,6 @@ class AstClass:
         # oke, koliko kapiram private constructor se koristi samo ako je cela klasa static, cime se ja sad ne bavim
         # a protected constructor sluzi za nesto drugo
         # uglavnom, mislim da je poprilicno sigurno da stavim svaki konstruktor kao public
-        # TODO: namestanje specifiera!!
 
         self.kod += "    " + specifier + " " + self.name + "()\n"
         self.kod += "    {\n"
