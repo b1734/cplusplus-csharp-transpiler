@@ -41,6 +41,7 @@ class Visitor(CPP14Visitor):
         self.current_field = None
         self.current_method = None
         self.declaration = None
+        self.member_specification_flag = False
         self.typesDictionary = {            # svaki podrzan C++ tip je uparen sa svojim C# ekvivalentom
             "int": "int",
             "char": "char",
@@ -157,7 +158,8 @@ class Visitor(CPP14Visitor):
         return
 
     def visitAccessSpecifier(self, ctx: CPP14Parser.AccessSpecifierContext):
-        self.current_class.allDeclarations.append(ctx.getChild(0))    # jedino dete ovog cvora je access specifier
+        if self.member_specification_flag:
+            self.current_class.allDeclarations.append(ctx.getChild(0))    # jedino dete ovog cvora je access specifier
         return
 
     def visitMemberdeclaration(self, ctx: CPP14Parser.MemberdeclarationContext):
@@ -182,7 +184,10 @@ class Visitor(CPP14Visitor):
         return
 
     def visitMemberSpecification(self, ctx: CPP14Parser.MemberSpecificationContext):
-        return self.visitChildren(ctx)
+        self.member_specification_flag = True
+        self.visitChildren(ctx)
+        self.member_specification_flag = False
+        return
 
     def visitClassSpecifier(self, ctx: CPP14Parser.ClassSpecifierContext):
         self.current_class = AstClass()
