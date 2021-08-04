@@ -47,7 +47,8 @@ class Visitor(CPP14Visitor):
             "long long": "long",
             "string": "string",
             "double": "double",
-            "float": "float"
+            "float": "float",
+            "bool": "bool"
         }
         self.classes_dictionary = {}    # ime klase je povezano sa AstClass objektom za tu klasu
         # NOTE: u ovaj recnik dodajem takodje svaku klasu kao poseban 'tip'
@@ -66,7 +67,7 @@ class Visitor(CPP14Visitor):
         #    print("PROMENLJIVA: " + self.variable)
         return self.visitChildren(ctx)
 
-    def visitDeclSpecifierSeq(self, ctx: CPP14Parser.DeclSpecifierSeqContext):
+    def visitDeclSpecifier(self, ctx: CPP14Parser.DeclSpecifierSeqContext):
     #    if self.declaration is not None:
         #    if not(ctx.getText() in self.typesDictionary.values()):
              #   self.typesDictionary[ctx.getText()] = ctx.getText()
@@ -76,9 +77,16 @@ class Visitor(CPP14Visitor):
     #        self.declaration.type = self.typesDictionary[ctx.getText()]
         var_type = ctx.getText()
         if self.current_field is not None:
-            self.current_field.type = var_type if self.current_field.type is None else self.current_field.type
+            if not self.current_field.abstract and var_type == "virtual":
+                self.current_field.abstract = True
+            else:
+                self.current_field.type = var_type if self.current_field.type is None else self.current_field.type
         elif self.current_method is not None:
-            self.current_method.type = var_type if self.current_method.type is None else self.current_method.type
+            # posto je sintaksa virtual int a ne int virutal, prvo proveravamo za virutal a posle za int
+            if self.current_method.virtual is None and var_type == "virtual":
+                self.current_method.virtual = var_type
+            else:
+                self.current_method.type = var_type if self.current_method.type is None else self.current_method.type
         elif self.current_function is not None:
             self.current_function.type = var_type if self.current_function.type is None else self.current_function.type
 
@@ -89,6 +97,8 @@ class Visitor(CPP14Visitor):
         if value != "None":
             if self.current_field is not None:
                 self.current_field.value = value
+            elif self.current_method is not None:
+                self.current_method.abstract = True
 
     def visitDeclaratorid(self, ctx: CPP14Parser.DeclaratorContext):
         variable = ctx.getText()
@@ -157,12 +167,15 @@ class Visitor(CPP14Visitor):
             # u pitanju je deklaracija polja
             self.current_field = AstFieldDeclaration()
             self.visitChildren(ctx)
+            if self.current_field.abstract:
+                self.current_class.abstract = True
             self.current_class.allDeclarations.append(self.current_field)
             self.current_field = None
         else:
             # u pitanju je deklaracija metode
             self.current_method = AstMethodDeclaration()
             self.visitChildren(ctx)
+            self.current_method.container = self.current_class
             self.current_class.allDeclarations.append(self.current_method)
             self.current_method = None
 
@@ -178,6 +191,9 @@ class Visitor(CPP14Visitor):
         self.allClasses.append(self.current_class)
 
         for parent in self.current_class.parent_classes:
+            if parent == self.current_class.parent_classes[0]:
+                continue        # za klasu koju direktno nasledjujemo nije potreban interfejs
+
             if isinstance(parent, AstClass):
                 parent.interface = True
 
@@ -190,7 +206,7 @@ visitor.visitTranslationUnit(tree)
 
 main_func = AstMethodDeclaration()
 main_func.type = "static int"
-main_func.name = "Main(string[] args)"
+main_func.name = "Main"
 
 program_class = AstClass()
 program_class.name = "Program"
