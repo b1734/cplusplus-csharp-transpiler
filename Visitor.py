@@ -175,6 +175,7 @@ class Visitor(CPP14Visitor):
             # u pitanju je deklaracija metode
             self.current_method = AstMethodDeclaration()
             self.visitChildren(ctx)
+
             self.current_class.allDeclarations.append(self.current_method)
             self.current_method = None
 

@@ -174,7 +174,6 @@ class AstClass:
                         add_code += "    }\n"
                 if necessary:
                     self.kod += add_code
-
                 # na kraju, generisemo implicit operator
                 self.kod += "    " + "static public implicit operator " + parent.name + "(" + self.name + " obj)\n"
                 self.kod += "    {\n"
