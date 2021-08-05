@@ -237,9 +237,9 @@ class AstClass:
                 self.check_virutal(decl)    # proveravamo, da li je trenutna metoda override
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
-                self.kod += "       // method's body can be filled as you wish\n"
+            #    self.kod += "       // method's body can be filled as you wish\n"
                 self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
-                if decl.name != "Main" and decl.type != "void":
+                if decl.name != "Main" and decl.type != "void" and decl.type is not None:
                     self.kod += "       return " + self.return_dictionary[decl.type] + ";\n"
                 self.kod += "    }\n"
             else:

@@ -103,8 +103,9 @@ class Visitor(CPP14Visitor):
 
     def visitClassName(self, ctx: CPP14Parser.ClassNameContext):
         if self.current_class is not None:
-            self.current_class.name = ctx.getText()       # dete ovog cvora je ime klase
-            self.classes_dictionary[ctx.getText()] = self.current_class
+            if self.current_class.name == "":
+                self.current_class.name = ctx.getText()       # dete ovog cvora je ime klase
+                self.classes_dictionary[ctx.getText()] = self.current_class
         return self.visitChildren(ctx)
 
     def visitBaseTypeSpecifier(self, ctx:CPP14Parser.BaseTypeSpecifierContext):
@@ -190,10 +191,14 @@ def GetCode(name):
     file.close()
     return code
 
+
 visitor = Visitor()
-tests_cnt = 1
+tests_cnt = 8
 # za svaki test generisemo poseban kod koji upisujemo u novi fajl
 for i in range(tests_cnt):
+    visitor.allClasses = []
+    visitor.allFunctions = []
+
     #inicijalizacija potrebnih promenljivih
     file_name = "Testiranje/Test" + str(i + 1) + ".txt"
     input_code = GetCode(file_name)
@@ -207,7 +212,7 @@ for i in range(tests_cnt):
     visitor.visitTranslationUnit(tree)
 
     main_func = AstMethodDeclaration()
-    main_func.type = "static int"
+    main_func.type = "static void"
     main_func.name = "Main"
 
     program_class = AstClass()
@@ -219,7 +224,7 @@ for i in range(tests_cnt):
             if func.name == "main":
                 continue
                 # main funkciju handlujem posebno
-        program_class.allDeclarations.append(func)
+            program_class.allDeclarations.append(func)
 
     program_class.allDeclarations.append(main_func)
     visitor.allClasses.append(program_class)
