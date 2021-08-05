@@ -213,8 +213,8 @@ for i in range(tests_cnt):
     visitor.allFunctions = []
 
     #inicijalizacija potrebnih promenljivih
- #   file_name = "Testiranje/Test" + str(i + 1) + ".txt"
-    file_name = "Test.txt"
+    file_name = "Testiranje/Test" + str(i + 1) + ".txt"
+#    file_name = "Test.txt"
     input_code = GetCode(file_name)
     code = antlr4.InputStream(input_code)
 
@@ -243,11 +243,11 @@ for i in range(tests_cnt):
     program_class.allDeclarations.append(main_func)
     visitor.allClasses.append(program_class)
 
-#    result_file_name = "Testiranje/ResultsBaseClassObjects" + str(i + 1) + ".txt"
-#    results = open(result_file_name, 'w')
+    result_file_name = "Testiranje/ResultsBaseClassObjects" + str(i + 1) + ".txt"
+    results = open(result_file_name, 'w')
 
     for klasa in visitor.allClasses:
         if isinstance(klasa, AstClass):
-            print(klasa.generate_code())
-        #    results.write(klasa.generate_code())
-#    results.close()
+        #    print(klasa.generate_code())
+            results.write(klasa.generate_code())
+    results.close()
