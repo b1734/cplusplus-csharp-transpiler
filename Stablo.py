@@ -36,6 +36,7 @@ class AstMethodDeclaration:
     def __init__(self):
         self.virtual = None         # da li je virtuelna funkcija u pitanju
         self.override = False        # da li je ova funkcija override neke virutelne
+        self.specifier = None
         self.type = None        # ako type ostane none, u pitanju je konstruktor
         self.name = ""
 
@@ -169,9 +170,11 @@ class AstClass:
                     if isinstance(method, AstMethodDeclaration):
                         if method.type is None:
                             continue            # preskoci constructor
-                        if self.check_if_overriden(method.name) and method.virtual:
+                        if (self.check_if_overriden(method.name) and method.virtual) or method.specifier == "private":
                             # ako je ova metoda vec overrajdovana, preskoci je
                             continue
+                        if mode == "public" and method.specifier == "protected":
+                            mode = "protected"
                         necessary = True
                         add_code += "    " + mode + " void " + method.name + "()\n"
                         add_code += "    {\n"
@@ -252,6 +255,7 @@ class AstClass:
                     if len(self.child_classes) > 0:
                         specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
                     self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
+                    decl.specifier = specifier
 
                 self.check_virutal(decl, direct)    # proveravamo, da li je trenutna metoda override
                 self.kod += decl.generate_code() + "\n"
