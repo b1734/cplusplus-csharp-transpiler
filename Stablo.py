@@ -96,7 +96,7 @@ class AstClass:
         self.allDeclarations = []       # u ovu listu cemo staviti i polja i metode, redom kojim se pojavljuju
         self.return_dictionary = {
             "int": "0",
-            "char": 'a',
+            "char": "'a'",
             "long": "0",
             "string": "str",
             "dobule": "3.14159",
@@ -150,9 +150,13 @@ class AstClass:
                             # ako je ova metoda vec overrajdovana, preskoci je
                             continue
                         necessary = True
-                        add_code += "   " + " public void " + method.name + "()\n"
+                        add_code += "   " + " public " + method.type + " " + method.name + "()\n"
                         add_code += "    {\n"
-                        add_code += "       " + object_name + "." + method.name + "();\n"
+                        if method.type == "void":
+                            add_code += "        " + object_name + "." + method.name + "();\n"
+                        else:
+                            add_code += "        " + method.type + " result = " + object_name + "." + method.name + "();\n"
+                            add_code += "        return result;\n"
                         add_code += "    }\n"
                 if necessary:
                     self.kod += add_code
@@ -224,9 +228,9 @@ class AstClass:
                 self.check_virutal(decl)
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
-                self.kod += "       // method's body can be filled as you wish\n"
-                self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
-                if decl.name != "Main" and decl.type != "void":
+            #    self.kod += "       // method's body can be filled as you wish\n"
+                self.kod += "       Console.WriteLine(" + '"class ' + self.name + ': method ' + decl.name + '"' + ");\n"
+                if decl.name != "Main" and decl.type != "void" and decl.type is not None:
                     self.kod += "       return " + self.return_dictionary[decl.type] + ";\n"
                 self.kod += "    }\n"
             else:

@@ -193,9 +193,11 @@ def GetCode(name):
 
 
 visitor = Visitor()
-tests_cnt = 10
+tests_cnt = 8
 # za svaki test generisemo poseban kod koji upisujemo u novi fajl
-for i in range(1):
+for i in range(tests_cnt):
+    visitor.allClasses = []
+    visitor.allFunctions = []
     #inicijalizacija potrebnih promenljivih
     file_name = "Testiranje/Test" + str(i + 1) + ".txt"
     input_code = GetCode(file_name)
@@ -209,7 +211,7 @@ for i in range(1):
     visitor.visitTranslationUnit(tree)
 
     main_func = AstMethodDeclaration()
-    main_func.type = "static int"
+    main_func.type = "static void"
     main_func.name = "Main"
 
     program_class = AstClass()
