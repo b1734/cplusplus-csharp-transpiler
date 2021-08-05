@@ -20,6 +20,7 @@ class Visitor(CPP14Visitor):
         self.current_method = None
         self.declaration = None
         self.member_specification_flag = False
+        self.base_specifier_flag = False
         self.typesDictionary = {            # svaki podrzan C++ tip je uparen sa svojim C# ekvivalentom
             "int": "int",
             "char": "char",
@@ -118,7 +119,9 @@ class Visitor(CPP14Visitor):
     def visitBaseSpecifier(self, ctx: CPP14Parser.BaseClauseContext):
         # posto u C# ne mozemo reci da li je nasledjivanje public, protected ili private - access specifier nas ne
         # zanima, zanima nas samo ime klase od koje nasledjujemo]
+        self.base_specifier_flag = True
         self.visitChildren(ctx)
+        self.base_specifier_flag = False
         return
 
     def visitFunctionDefinition(self, ctx: CPP14Parser.FunctionBodyContext):
@@ -138,7 +141,9 @@ class Visitor(CPP14Visitor):
 
     def visitAccessSpecifier(self, ctx: CPP14Parser.AccessSpecifierContext):
         if self.member_specification_flag:
-            self.current_class.allDeclarations.append(ctx.getChild(0))    # jedino dete ovog cvora je access specifier
+            self.current_class.allDeclarations.append(ctx.getText())    # jedino dete ovog cvora je access specifier
+        elif self.base_specifier_flag:
+            self.current_class.parent_classes.append(ctx.getText())
         return
 
     def visitMemberdeclaration(self, ctx: CPP14Parser.MemberdeclarationContext):
@@ -176,8 +181,16 @@ class Visitor(CPP14Visitor):
         self.allClasses.append(self.current_class)
 
         if len(self.current_class.parent_classes) > 0:
-            self.current_class.parent_classes[0].directInheritance.append(self.current_class)
+            if isinstance(self.current_class.parent_classes[0], str):
+                direct = self.current_class.parent_classes[1]
+            else:
+                direct = self.current_class.parent_classes[0]
+            for parent in self.current_class.parent_classes:
+                if isinstance(parent, AstClass):
+                    if parent.abstract:
+                        direct = parent
 
+            direct.directInheritance.append(self.current_class)
         self.current_class = None
         return
 
@@ -193,7 +206,7 @@ def GetCode(name):
 
 
 visitor = Visitor()
-tests_cnt = 8
+tests_cnt = 9
 # za svaki test generisemo poseban kod koji upisujemo u novi fajl
 for i in range(tests_cnt):
     visitor.allClasses = []
@@ -201,6 +214,7 @@ for i in range(tests_cnt):
 
     #inicijalizacija potrebnih promenljivih
     file_name = "Testiranje/Test" + str(i + 1) + ".txt"
+ #   file_name = "Test.txt"
     input_code = GetCode(file_name)
     code = antlr4.InputStream(input_code)
 
@@ -234,5 +248,6 @@ for i in range(tests_cnt):
 
     for klasa in visitor.allClasses:
         if isinstance(klasa, AstClass):
+        #    print(klasa.generate_code())
             results.write(klasa.generate_code())
     results.close()

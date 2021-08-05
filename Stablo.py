@@ -104,18 +104,21 @@ class AstClass:
         }
         return
 
-    def check_if_overriden(self, method_name):     # helper funkcija za proveravanje da li je metoda overrajduvana
+    def check_if_overriden(self, method_name):
+        # helper funkcija za proveravanje da li je metoda overrajduvana, prilikom prosledjivanja poziva
         for method in self.allDeclarations:
             if isinstance(method, AstMethodDeclaration):
                 if method.name == method_name:
                     return True
+
         return False
 
-    def check_virutal(self, method):
+    def check_virutal(self, method, direct):
         if len(self.parent_classes) == 0:
             return
         # proveravamo sve metode klase koja je direktno nasledjena da proverimo da li je tr metoda deklarisana kao virtuelna
-        parent = self.parent_classes[0]
+        # kako bi znali da li da joj dopisemo override
+        parent = direct
         for parent_method in parent.allDeclarations:
             if isinstance(parent_method, AstMethodDeclaration):
                 if parent_method.name == method.name and parent_method.virtual is not None:
@@ -143,21 +146,23 @@ class AstClass:
                 self.kod += "    }\n"
         return
 
-    def generate_inheritance(self):
+    def generate_inheritance(self, direct_name):
         # posle deklaracija, treba da ugnjezdimo klase tako sto cemo za svaku klasu od koje trenutna klasa nasledjuje
         # (osim one koja se direktno nasledjuje) generisemo jedan objekat klase koja se nasledjuje, onda treba proci
         # kroz sve metode te klase i generisati ih i na kraju treba generisati static implicit operator
 
         for parent in self.parent_classes:
 
+            mode = self.parent_classes[0]
             if isinstance(parent, AstClass):
-                if parent == self.parent_classes[0]:     # preskacemo prvu klasu u listi, jer smo nju vec direktno nalsedili
+                if parent.name == direct_name:     # preskacemo klasu koju smo direknto nasledili
                     continue
-
+                if len(self.child_classes) > 0:
+                    mode = "public"    # ukoliko je trenunta klasa baza nekoj klasi, sve njene metode moraju biti public
                 necessary = False
                 add_code = ""
                 object_name = parent.name + "Part"       # generisemo objekat koji sigurno dodajemo
-                self.kod += "    public " + parent.name + " " + object_name + " = new " + parent.name + "();\n"
+                self.kod += "    " + mode + " " + parent.name + " " + object_name + " = new " + parent.name + "();\n"
 
                 for method in parent.allDeclarations:    # za svaku metodu, treba generisati kod koji ce pozvati tu metodu
                     # iz potrebne klase
@@ -168,7 +173,7 @@ class AstClass:
                             # ako je ova metoda vec overrajdovana, preskoci je
                             continue
                         necessary = True
-                        add_code += "    " + "public void " + method.name + "()\n"
+                        add_code += "    " + mode + " void " + method.name + "()\n"
                         add_code += "    {\n"
                         add_code += "    " + "    " + object_name + "." + method.name + "();\n"
                         add_code += "    }\n"
@@ -179,9 +184,11 @@ class AstClass:
                 self.kod += "    {\n"
                 self.kod += "    " + "    " + "return obj." + object_name + ";\n"
                 self.kod += "    }\n"
+            elif isinstance(parent, str):
+                mode = parent
         return
 
-    def generate_constructor(self, specifier="public"):
+    def generate_constructor(self, direct, specifier="public"):
         # oke, koliko kapiram private constructor se koristi samo ako je cela klasa static, cime se ja sad ne bavim
         # a protected constructor sluzi za nesto drugo
         # uglavnom, mislim da je poprilicno sigurno da stavim svaki konstruktor kao public
@@ -190,9 +197,10 @@ class AstClass:
         self.kod += "    {\n"
         # sada namestamo objekte
         for parent in self.parent_classes:
-            if parent == self.parent_classes[0]: # prvu klasu nasledjujemo direktno
+            if parent == direct: # prvu klasu nasledjujemo direktno
                 continue
-            self.kod += "    " + "    " + parent.name + "Part." + self.name + "Part = this;\n"
+            if isinstance(parent, AstClass):
+                self.kod += "    " + "    " + parent.name + "Part." + self.name + "Part = this;\n"
 
         self.kod += "    }\n"
 
@@ -201,9 +209,18 @@ class AstClass:
             self.kod += "abstract "
         self.kod += "class " + self.name
 
+        direct = None
         if len(self.parent_classes) > 0:
             # klasa direktno nasledjuje jednu klasu, ostale ugnjezdujemo
-            self.kod += " : " + self.parent_classes[0].name + "\n"
+            if isinstance(self.parent_classes[0], AstClass):
+                direct = self.parent_classes[0]
+            else:
+                direct = self.parent_classes[1]
+            for parent in self.parent_classes:
+                if isinstance(parent, AstClass):
+                    if parent.abstract:
+                        direct = parent
+            self.kod += " : " + direct.name + "\n"
         else:
             # ako nema nasledjivanja, samo prelazimo u novi red
             self.kod += "\n"
@@ -214,10 +231,12 @@ class AstClass:
         if self.name == "Program":
             specifier = None
 
-         # konstruktor generisemo posebno, jer ako imamo neki parent class moramo podesiti nejgove objekte
+        # konstruktor generisemo posebno, jer ako imamo neki parent class moramo podesiti nejgove objekte
         generated_constructor = False
-        if len(self.parent_classes) > 1:    # ako imamo samo jedan parent class, ne moramo da podesavamo constructor
-            self.generate_constructor()
+        # ako imamo samo jedan parent class, ne moramo da podesavamo constructor
+        # vece od 2 iz razloga zato sto imamo jedan access specifier i jednu klasu
+        if len(self.parent_classes) > 2:
+            self.generate_constructor(direct)
             generated_constructor = True
 
         for decl in self.allDeclarations:
@@ -234,11 +253,11 @@ class AstClass:
                         specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
                     self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
 
-                self.check_virutal(decl)    # proveravamo, da li je trenutna metoda override
+                self.check_virutal(decl, direct)    # proveravamo, da li je trenutna metoda override
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
-            #    self.kod += "       // method's body can be filled as you wish\n"
-                self.kod += "       Console.WriteLine(" + '"' + decl.name + '"' + ");\n"
+                #    self.kod += "       // method's body can be filled as you wish\n"
+                self.kod += "       Console.WriteLine(" + '"class ' + self.name + " - method " + decl.name + '"' + ");\n"
                 if decl.name != "Main" and decl.type != "void" and decl.type is not None:
                     self.kod += "       return " + self.return_dictionary[decl.type] + ";\n"
                 self.kod += "    }\n"
@@ -246,8 +265,9 @@ class AstClass:
                 # ako nije ni AstFieldDeclaration ni AstMethodDeclaration, onda je u pitanju promena access specifiera
                 specifier = str(decl)
 
-        self.generate_inheritance()
-        self.generate_children()
+        self.generate_inheritance(direct.name if direct is not None else None)
+        if not self.abstract:
+            self.generate_children()
 
         self.kod += "}\n"        # zatvaramo zagradu za definiciju klase
         return self.kod
