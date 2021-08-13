@@ -206,7 +206,7 @@ def GetCode(name):
 
 
 visitor = Visitor()
-tests_cnt = 1
+tests_cnt = 10
 # za svaki test generisemo poseban kod koji upisujemo u novi fajl
 for i in range(tests_cnt):
     visitor.allClasses = []

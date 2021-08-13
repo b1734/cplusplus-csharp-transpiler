@@ -152,12 +152,13 @@ class AstClass:
         # (osim one koja se direktno nasledjuje) generisemo jedan objekat klase koja se nasledjuje, onda treba proci
         # kroz sve metode te klase i generisati ih i na kraju treba generisati static implicit operator
 
+        mode = ""
         for parent in self.parent_classes:
-
-            mode = self.parent_classes[0]
             if isinstance(parent, AstClass):
                 if parent.name == direct_name:     # preskacemo klasu koju smo direknto nasledili
                     continue
+                if mode == "":
+                    mode = "private"
                 if len(self.child_classes) > 0:
                     mode = "public"    # ukoliko je trenunta klasa baza nekoj klasi, sve njene metode moraju biti public
                 necessary = False
@@ -173,9 +174,9 @@ class AstClass:
                         if (self.check_if_overriden(method.name) and method.virtual) or method.specifier == "private":
                             # ako je ova metoda vec overrajdovana, preskoci je
                             continue
+                        necessary = True
                         if mode == "public" and method.specifier == "protected":
                             mode = "protected"
-                        necessary = True
                         add_code += "    " + mode + " void " + method.name + "()\n"
                         add_code += "    {\n"
                         add_code += "    " + "    " + object_name + "." + method.name + "();\n"
@@ -189,6 +190,7 @@ class AstClass:
                 self.kod += "    }\n"
             elif isinstance(parent, str):
                 mode = parent
+
         return
 
     def generate_constructor(self, direct, specifier="public"):
@@ -207,7 +209,17 @@ class AstClass:
 
         self.kod += "    }\n"
 
+    def set_specifiers(self):
+        specifier = "private"
+        for decl in self.allDeclarations:
+            if isinstance(decl, AstMethodDeclaration):
+                decl.specifier = specifier
+            elif isinstance(decl, str):
+                specifier = decl
+
     def generate_code(self):
+        self.set_specifiers()
+
         if self.abstract:
             self.kod += "abstract "
         self.kod += "class " + self.name
@@ -253,9 +265,11 @@ class AstClass:
                 self.kod += "    "  # tabovanje
                 if specifier is not None:
                     if len(self.child_classes) > 0:
-                        specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
-                    self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
-                    decl.specifier = specifier
+                        if decl.specifier != "private":    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
+                            decl.specifier = "public"      # osim privatnih!
+
+                    if decl.specifier != "":
+                        self.kod += decl.specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
 
                 self.check_virutal(decl, direct)    # proveravamo, da li je trenutna metoda override
                 self.kod += decl.generate_code() + "\n"
@@ -275,3 +289,4 @@ class AstClass:
 
         self.kod += "}\n"        # zatvaramo zagradu za definiciju klase
         return self.kod
+#TODO: prevodjenje sa specifierima!
