@@ -36,6 +36,7 @@ class AstMethodDeclaration:
     def __init__(self):
         self.virtual = None         # ovo je za kasnije
         self.override = False
+        self.specifier = None       # TODO: namestiti preskakanje private metoda
         self.type = None        # ako type ostane none, u pitanju je konstruktor
         self.name = ""
 
@@ -62,7 +63,6 @@ class AstFieldDeclaration:
         self.name = ""
         self.value = None
         self.array_size = "-1"
-
 
     def generate_code(self):
         kod = ""
@@ -112,11 +112,10 @@ class AstClass:
                     return True
         return False
 
-    def check_virutal(self, method):
+    def check_virutal(self, method, parent):
         if len(self.parent_classes) == 0:
             return
-            # proveravamo sve metode klase koja je direktno nasledjena da proverimo da li je tr metoda deklarisana kao virtuelna
-        parent = self.parent_classes[0]
+        # proveravamo sve metode klase koja je direktno nasledjena da proverimo da li je tr metoda deklarisana kao virtuelna
         for parent_method in parent.allDeclarations:
             if isinstance(parent_method, AstMethodDeclaration):
                 if parent_method.name == method.name and parent_method.virtual is not None:
@@ -126,28 +125,28 @@ class AstClass:
                 if parent_method.name == method.name and parent_method.abstract:
                     method.override = True
 
-    def generate_inheritance(self):
+    def generate_inheritance(self, direct_name):
         # za svaki parent izgenerisi objekat i posle izgenerisi potrebne metode
         for parent in self.parent_classes:
             if isinstance(parent, AstClass):
-                if parent == self.parent_classes[0]:
+                if parent.name == direct_name:
                     continue
                 if parent.abstract:
                     # apstraktne klase ne mogu definisati svoje objekte - tako da ne mozemo pozivati njene metode
-                    # preko ugnjezdenog objekta (pretpostavka je da su sve metode vec overrajdovane)
+                    # preko ugnjezdenog objekta (pretpostavka je da su sve metode apstraktne klase vec overrajdovane)
                     continue
 
                 necessary = False
                 add_code = ""
                 object_name = parent.name + "Part"
-                add_code += "    public " + parent.name + " " + object_name + " = new " + parent.name + "();\n"
+                self.kod += "    public " + parent.name + " " + object_name + " = new " + parent.name + "();\n"
 
                 for method in parent.allDeclarations:
                     if isinstance(method, AstMethodDeclaration):
                         if method.type is None:
                             continue
-                        if self.check_if_overriden(method.name) and method.virtual:
-                            # ako je ova metoda vec overrajdovana, preskoci je
+                        if (self.check_if_overriden(method.name) and method.virtual) or method.specifier == "private":
+                            # ako je ova metoda vec overrajdovana ili privatna, preskoci je
                             continue
                         necessary = True
                         add_code += "   " + " public " + method.type + " " + method.name + "()\n"
@@ -172,34 +171,46 @@ class AstClass:
                 if method.type is None:
                     # u pitanju je konstruktor koji preskacemo
                     continue
+                if method.specifier == "private":
+                    # preskacemo privatne metode
+                    continue
 
                 self.kod += "    " + method.type + " " + method.name + "();\n"
                 # svaki member interfejsa mora da bude public
 
         self.kod += "}\n"
 
+    def set_specifiers(self):
+        specifier = "private"
+        for decl in self.allDeclarations:
+            if isinstance(decl, AstMethodDeclaration):
+                decl.specifier = specifier
+            elif isinstance(decl, str):
+                specifier = decl
+
     def generate_code(self):
+        self.set_specifiers()
+
         if self.interface:
             self.generate_interface()
         if self.abstract:
             self.kod += "abstract "
         self.kod += "class " + self.name
 
-        inherited_flag = False
-        if self.interface:  # ukoliko je izgenerisan interfejs za ovu klasu, nasledi ga
-            self.kod += " : I" + self.name
-            inherited_flag = True
-
+        direct = None
         if len(self.parent_classes) > 0:
-            if inherited_flag:
-                self.kod += ", "
-            else:
-                self.kod += " : "
-            self.kod += self.parent_classes[0].name
+            direct = self.parent_classes[0]
+            for parent in self.parent_classes:
+                if parent.abstract:
+                    direct = parent
 
+            self.kod += " : " + direct.name     # moramo prvu naslediti klasu pa tek onda interfejse
+
+            if self.interface:  # ako je za ovu klasu izgenersian interfejs, onda ga treba naslediti
+                self.kod += ", I" + self.name
             for parent in self.parent_classes:
                 if isinstance(parent, AstClass):
-                    if parent == self.parent_classes[0]:    # prvu klasu u listi nasledjujemo direktno
+                    if parent == direct:    # apstraktnu klasu nasledjujemo direktno
                         continue
                     parent_interface_name = "I" + parent.name
                     self.kod += ", " + parent_interface_name
@@ -221,11 +232,14 @@ class AstClass:
             elif isinstance(decl, AstMethodDeclaration):
                 self.kod += "    "  # tabovanje
                 if specifier is not None:
-                    self.kod += specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
-                if self.interface:
-                    specifier = "public"    # ako je tr klasa bazna nekoj drugoj klasi,sve metode moraju biti public
-
-                self.check_virutal(decl)
+                    if self.interface:
+                        # sve metode koje implementira interfejs moraju biti public - a interfejs implementira sve
+                        # metode osim privatnih
+                        if decl.specifier != "private":
+                            decl.specifier = "public"
+                    if decl.specifier != "":
+                        self.kod += decl.specifier + " "      # ako nije u pitanju klasa Program, imamo neki access specifier
+                self.check_virutal(decl, direct)
                 self.kod += decl.generate_code() + "\n"
                 self.kod += "    {\n"
             #    self.kod += "       // method's body can be filled as you wish\n"
@@ -237,7 +251,7 @@ class AstClass:
                 # ako nije ni AstFieldDeclaration ni AstMethodDeclaration, onda je u pitanju promena access specifiera
                 specifier = str(decl)
 
-        self.generate_inheritance()
+        self.generate_inheritance(direct.name if direct is not None else None)
 
         self.kod += "}\n"        # zatvaramo zagradu za definiciju klase
         return self.kod
