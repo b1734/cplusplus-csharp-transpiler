@@ -226,11 +226,11 @@ class AstClass:
 
         direct = None
         if len(self.parent_classes) > 0:
-            # klasa direktno nasledjuje jednu klasu, ostale ugnjezdujemo
-            if isinstance(self.parent_classes[0], AstClass):
-                direct = self.parent_classes[0]
-            else:
-                direct = self.parent_classes[1]
+            # klasa direktno nasledjuje poslednju klasu, ostale ugnjezdujemo
+            direct = self.parent_classes[-1]
+        #    print("Lista je: ")
+        #    print(self.parent_classes)
+
             for parent in self.parent_classes:
                 if isinstance(parent, AstClass):
                     if parent.abstract:
