@@ -199,7 +199,8 @@ class AstClass:
 
         direct = None
         if len(self.parent_classes) > 0:
-            direct = self.parent_classes[0]
+            # klasa direknto nasledjuje poslednju klasu, ostale ugnjezdujemo
+            direct = self.parent_classes[-1]
             for parent in self.parent_classes:
                 if parent.abstract:
                     direct = parent
